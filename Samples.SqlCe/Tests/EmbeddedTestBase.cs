@@ -5,36 +5,39 @@ using FluentNHibernate.Automapping;
 using FluentNHibernate.Cfg;
 using FluentNHibernate.Cfg.Db;
 using NHibernate;
-using NHibernate.Cfg;
 using NHibernate.Tool.hbm2ddl;
 
-namespace Samples.SqlCe.Tests {
+namespace Samples.SqlCe.Tests
+{
 
     /// <summary>
     /// SqlCEDBHelper courtesy of Ayende Rahien from Rhino.Commons.Helpers
     /// Full code can be found here: https://svn.sourceforge.net/svnroot/rhino-tools/trunk/rhino-commons/Rhino.Commons/Helpers/SqlCEDbHelper.cs
     /// </summary>
-    internal static class SqlCEDbHelper {
-        private static string engineTypeName = "System.Data.SqlServerCe.SqlCeEngine, System.Data.SqlServerCe";
-        private static Type type;
-        private static PropertyInfo localConnectionString;
-        private static MethodInfo createDatabase;
-    
-        internal static void CreateDatabaseFile(string filename) {
+    internal static class SqlCeDbHelper
+    {
+        private const string EngineTypeName = "System.Data.SqlServerCe.SqlCeEngine, System.Data.SqlServerCe";
+        private static Type _type;
+        private static PropertyInfo _localConnectionString;
+        private static MethodInfo _createDatabase;
+
+        internal static void CreateDatabaseFile(string filename)
+        {
             if (File.Exists(filename))
                 File.Delete(filename);
 
-            if (type == null) {
-                type = Type.GetType(engineTypeName);
-    			localConnectionString = type.GetProperty("LocalConnectionString");
-                createDatabase = type.GetMethod("CreateDatabase");
+            if (_type == null)
+            {
+                _type = Type.GetType(EngineTypeName);
+                _localConnectionString = _type.GetProperty("LocalConnectionString");
+                _createDatabase = _type.GetMethod("CreateDatabase");
             }
-    		object engine = Activator.CreateInstance(type);
-    		localConnectionString
+            object engine = Activator.CreateInstance(_type);
+            _localConnectionString
                 .SetValue(engine, string.Format("Data Source='{0}';", filename), null);
-    		createDatabase
+            _createDatabase
                 .Invoke(engine, new object[0]);
-    	}
+        }
     }
 
     /// <summary>
@@ -43,21 +46,23 @@ namespace Samples.SqlCe.Tests {
     /// Ayende has more code in the version in his repository, and you can
     /// expand alot more here, but for the sake of argument only the basics are here
     /// </summary>
-    public class EmbeddedTestBase {
+    public class EmbeddedTestBase
+    {
         public static string DatabaseFilename = "TempDB.sdf";
 
-        protected static ISessionFactory sessionFactory;
-        protected static FluentConfiguration configuration;
+        protected static ISessionFactory SessionFactory;
+        protected static FluentConfiguration Configuration;
 
         /// <summary> 
         /// Initialize NHibernate and builds a session factory 
         /// Note, this is a costly call so it will be executed only one. 
         /// </summary> 
-        protected void FixtureInitalize(params Assembly[] assemblies) {
-            if (sessionFactory != null)
+        protected void FixtureInitalize(params Assembly[] assemblies)
+        {
+            if (SessionFactory != null)
                 return;
 
-            configuration = Fluently.Configure()
+            Configuration = Fluently.Configure()
                 // Bug fix: http://stackoverflow.com/questions/2361730/assertionfailure-null-identifier-fluentnh-sqlserverce
                 .ExposeConfiguration(x => x.SetProperty("connection.release_mode", "on_close"))
                 .Database(
@@ -70,23 +75,25 @@ namespace Samples.SqlCe.Tests {
             foreach (var assembly in assemblies)
             {
                 var asm = assembly;
-                configuration
-                    .Mappings(m => m.AutoMappings.Add(AutoMap.Assembly(asm).Where(t => t.Namespace.EndsWith("DomainObjects"))));
+                Configuration
+                    .Mappings(m => m.AutoMappings.Add(AutoMap.Assembly(asm).Where(t => t.Namespace != null && t.Namespace.EndsWith("DomainObjects"))));
             }
 
             SetupDb();
 
-            sessionFactory = configuration.BuildSessionFactory();
+            SessionFactory = Configuration.BuildSessionFactory();
 
         }
 
-        public void SetupDb() {
-            SqlCEDbHelper.CreateDatabaseFile(DatabaseFilename);
-            new SchemaExport(configuration.BuildConfiguration()).Execute(true, true, false);
+        public void SetupDb()
+        {
+            SqlCeDbHelper.CreateDatabaseFile(DatabaseFilename);
+            new SchemaExport(Configuration.BuildConfiguration()).Execute(true, true, false);
         }
 
-        public ISession CreateSession() {
-            return sessionFactory.OpenSession();
+        public ISession CreateSession()
+        {
+            return SessionFactory.OpenSession();
         }
 
     }
