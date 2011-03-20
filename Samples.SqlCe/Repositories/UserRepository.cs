@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using NHibernate;
-using NHibernate.Expression;
+using NHibernate.Criterion;
 using Samples.SqlCe.DomainObjects;
 
 namespace Samples.SqlCe.Repositories {
