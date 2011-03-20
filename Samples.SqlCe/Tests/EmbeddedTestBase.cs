@@ -48,47 +48,55 @@ namespace Samples.SqlCe.Tests
     /// </summary>
     public class EmbeddedTestBase
     {
-        public static string DatabaseFilename = "TempDB.sdf";
+        public static string DatabaseFilename = "TempTestDB.sdf";
 
         protected static ISessionFactory SessionFactory;
-        protected static FluentConfiguration Configuration;
+        protected static FluentConfiguration Config;
 
-        /// <summary> 
-        /// Initialize NHibernate and builds a session factory 
-        /// Note, this is a costly call so it will be executed only one. 
-        /// </summary> 
-        protected void FixtureInitalize(params Assembly[] assemblies)
+        public FluentConfiguration Configure()
         {
-            if (SessionFactory != null)
-                return;
-
-            Configuration = Fluently.Configure()
+            return Config ?? (Config =
+                Fluently.Configure()
                 // Bug fix: http://stackoverflow.com/questions/2361730/assertionfailure-null-identifier-fluentnh-sqlserverce
                 .ExposeConfiguration(x => x.SetProperty("connection.release_mode", "on_close"))
                 .Database(
                     MsSqlCeConfiguration.Standard
-                    .ConnectionString(string.Format("Data Source={0};", DatabaseFilename)
+                    .ConnectionString(string.Format("Data Source={0};", DatabaseFilename))
+                    .ShowSql()
                 )
-                .ShowSql()
             );
+        }
 
-            foreach (var assembly in assemblies)
+        /// <summary> 
+        /// Initialize NHibernate and builds a session factory.
+        /// Note, this is a costly call so it will be executed only one. 
+        /// </summary> 
+        protected void Initialize(params Assembly[] assemblies)
+        {
+            if (SessionFactory != null)
+                return;
+
+            if (Config == null)
             {
-                var asm = assembly;
-                Configuration
-                    .Mappings(m => m.AutoMappings.Add(AutoMap.Assembly(asm).Where(t => t.Namespace != null && t.Namespace.EndsWith("DomainObjects"))));
+                Configure();
+                foreach (var assembly in assemblies)
+                {
+                    var asm = assembly;
+                    Config.Mappings(m => m.AutoMappings.Add(
+                        AutoMap.Assembly(asm).Where(t => t.Namespace != null && t.Namespace.EndsWith("DomainObjects"))
+                    ));
+                }
             }
 
             SetupDb();
 
-            SessionFactory = Configuration.BuildSessionFactory();
-
+            SessionFactory = Config.BuildSessionFactory();
         }
 
         public void SetupDb()
         {
             SqlCeDbHelper.CreateDatabaseFile(DatabaseFilename);
-            new SchemaExport(Configuration.BuildConfiguration()).Execute(true, true, false);
+            new SchemaExport(Config.BuildConfiguration()).Execute(true, true, false);
         }
 
         public ISession CreateSession()

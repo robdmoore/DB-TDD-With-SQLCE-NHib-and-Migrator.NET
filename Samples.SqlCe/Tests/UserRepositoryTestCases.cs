@@ -18,7 +18,7 @@ namespace Samples.SqlCe.Tests {
 
         [TestFixtureSetUp]
         public void TestFixtureSetUp() {
-            FixtureInitalize(typeof(User).Assembly);
+            Initialize(typeof(User).Assembly);
 
             session = CreateSession();
             userRepository = new UserRepository();
