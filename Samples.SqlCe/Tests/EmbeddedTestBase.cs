@@ -67,26 +67,38 @@ namespace Samples.SqlCe.Tests
             );
         }
 
+        protected void Initialize(params Assembly[] assemblies)
+        {
+            foreach (var assembly in assemblies)
+            {
+                var asm = assembly;
+                Configure().Mappings(m => m.AutoMappings.Add(AutoMap.Assembly(asm)));
+            }
+            Initialize();
+        }
+
+        protected void Initialize(string namespaceSuffix, params Assembly[] assemblies)
+        {
+            foreach (var assembly in assemblies)
+            {
+                var asm = assembly;
+                Configure().Mappings(m => m.AutoMappings.Add(
+                    AutoMap.Assembly(asm).Where(t => t.Namespace != null && t.Namespace.EndsWith(namespaceSuffix))
+                ));
+            }
+            Initialize();
+        }
+
         /// <summary> 
         /// Initialize NHibernate and builds a session factory.
         /// Note, this is a costly call so it will be executed only one. 
         /// </summary> 
-        protected void Initialize(params Assembly[] assemblies)
+        protected void Initialize()
         {
             if (SessionFactory != null)
                 return;
 
-            if (Config == null)
-            {
-                Configure();
-                foreach (var assembly in assemblies)
-                {
-                    var asm = assembly;
-                    Config.Mappings(m => m.AutoMappings.Add(
-                        AutoMap.Assembly(asm).Where(t => t.Namespace != null && t.Namespace.EndsWith("DomainObjects"))
-                    ));
-                }
-            }
+            Configure();
 
             SetupDb();
 
