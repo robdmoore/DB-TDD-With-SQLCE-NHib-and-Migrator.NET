@@ -44,7 +44,7 @@ namespace Samples.SqlCe.Tests
     /// The code below was also supplied by Ayende Rahien from Rhino.Commons.ForTesting
     /// You can find the complete code here: https://svn.sourceforge.net/svnroot/rhino-tools/trunk/rhino-commons/Rhino.Commons/ForTesting/NHibernateEmbeddedDBTestFixtureBase.cs
     /// Ayende has more code in the version in his repository, and you can
-    /// expand alot more here, but for the sake of argument only the basics are here
+    /// expand a lot more here, but for the sake of argument only the basics are here
     /// </summary>
     public class EmbeddedTestBase
     {
@@ -67,17 +67,17 @@ namespace Samples.SqlCe.Tests
             );
         }
 
-        protected void Initialize(params Assembly[] assemblies)
+        protected void Initialize(Assembly migrationAssembly = null, params Assembly[] assemblies)
         {
             foreach (var assembly in assemblies)
             {
                 var asm = assembly;
                 Configure().Mappings(m => m.AutoMappings.Add(AutoMap.Assembly(asm)));
             }
-            Initialize();
+            Initialize(migrationAssembly);
         }
 
-        protected void Initialize(string namespaceSuffix, params Assembly[] assemblies)
+        protected void Initialize(string namespaceSuffix, Assembly migrationAssembly = null, params Assembly[] assemblies)
         {
             foreach (var assembly in assemblies)
             {
@@ -86,29 +86,37 @@ namespace Samples.SqlCe.Tests
                     AutoMap.Assembly(asm).Where(t => t.Namespace != null && t.Namespace.EndsWith(namespaceSuffix))
                 ));
             }
-            Initialize();
+            Initialize(migrationAssembly);
         }
 
         /// <summary> 
         /// Initialize NHibernate and builds a session factory.
         /// Note, this is a costly call so it will be executed only one. 
         /// </summary> 
-        protected void Initialize()
+        protected void Initialize(Assembly migrationAssembly = null)
         {
             if (SessionFactory != null)
                 return;
 
             Configure();
 
-            SetupDb();
+            SetupDb(migrationAssembly);
 
             SessionFactory = Config.BuildSessionFactory();
         }
 
-        public void SetupDb()
+        public void SetupDb(Assembly migrationAssembly = null)
         {
             SqlCeDbHelper.CreateDatabaseFile(DatabaseFilename);
-            new SchemaExport(Config.BuildConfiguration()).Execute(true, true, false);
+            if (migrationAssembly == null)
+            {
+                new SchemaExport(Config.BuildConfiguration()).Execute(true, true, false);
+            }
+            else
+            {
+                var migrator = new Migrator.Migrator("SqlServerCE", "Data Source=" + DatabaseFilename, migrationAssembly, true);
+                migrator.MigrateToLastVersion();
+            }
         }
 
         public ISession CreateSession()

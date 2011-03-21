@@ -21,7 +21,7 @@ namespace Samples.SqlCe.Tests {
         [TestFixtureSetUp]
         public void TestFixtureSetUp()
         {
-            Initialize("DomainObjects", typeof(User).Assembly);
+            Initialize("DomainObjects", typeof(CreateUserTable).Assembly, typeof(User).Assembly);
 
             _session = CreateSession();
             _userRepository = new UserRepository {session = _session};
